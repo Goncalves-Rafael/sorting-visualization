@@ -29,7 +29,7 @@ export default {
       min: 20,
       current: 0,
       intervalId: null,
-      cleatIntervalId: null,
+      clearIntervalId: null,
       dispatchedChanges: [],
       dispatchedComparisons: {},
       selectedFirst: null,
@@ -39,6 +39,8 @@ export default {
   },
   mounted () {
     this.generateRandomArray(50)
+    clearInterval(this.intervalId)
+    clearInterval(this.clearIntervalId)
   },
   methods: {
     generateRandomArray (size = 20) {
@@ -51,9 +53,9 @@ export default {
     dispatchChanges (first, second) {
       this.dispatchedChanges.push([first, second])
     },
-    dispatchComparisons (first, second) {
-      if (!this.dispatchedComparisons[first]) this.dispatchedComparisons[first] = { compareWith: [] }
-      this.dispatchedComparisons[first].compareWith.push(second)
+    dispatchComparisons (first, second, step) {
+      if (!this.dispatchedComparisons[step]) this.dispatchedComparisons[step] = { comparisons: [] }
+      this.dispatchedComparisons[step].comparisons.push([first, second])
     },
     selectionSort () {
       if (!this.intervalId) {
@@ -78,29 +80,31 @@ export default {
       }
     },
     comparisonFactory (registerComparisonCb, compareFunction = (a, b) => b - a) {
-      return function (array, first, second) {
+      return function (array, first, second, step) {
         console.log('comparison')
-        if (registerComparisonCb) registerComparisonCb(first, second)
+        if (registerComparisonCb) registerComparisonCb(first, second, step)
         return compareFunction(array[first], array[second])
       }
     },
     commitDispatches () {
       try {
-        console.log('commitDispatches')
         const change = this.dispatchedChanges[0]
-        if (this.dispatchedComparisons[change[0]].compareWith.length <= 0) {
+        if (this.dispatchedComparisons[change[0]].comparisons.length <= 0) {
           this.selected = parseInt(change[0])
           this.switchElementsDefault(this.itens, change[0], change[1])
           this.dispatchedChanges.splice(0, 1)
+          console.log('commitDispatchesChanges')
         } else {
-          const comparison = this.dispatchedComparisons[change[0]]
-          this.selectedFirst = change[0]
-          this.selectedSecond = comparison.compareWith[0]
-          this.dispatchedComparisons[change[0]].compareWith.splice(0, 1)
+          debugger
+          const comparison = this.dispatchedComparisons[change[0]].comparisons[0]
+          this.selectedFirst = comparison[0]
+          this.selectedSecond = comparison[1]
+          this.dispatchedComparisons[change[0]].comparisons.splice(0, 1)
+          console.log('commitDispatchesComparison')
         }
         this.$forceUpdate()
       } catch (e) {
-        if (!this.cleatIntervalId) {
+        if (!this.clearIntervalId) {
           setTimeout(this.killInterval, 200)
         }
       }
