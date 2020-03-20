@@ -1,7 +1,7 @@
 <template>
   <div id="app">
     <div class="sidebar">
-      <button @click="selectionSort">
+      <button id="sort-button" @click="selectionSort">
         Sort!
       </button>
     </div>
@@ -38,7 +38,7 @@ export default {
     }
   },
   mounted () {
-    this.generateRandomArray(30)
+    this.generateRandomArray(50)
   },
   methods: {
     generateRandomArray (size = 20) {
@@ -128,40 +128,91 @@ export default {
 </script>
 
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
 body, html {
     color: white;
     margin: 0px;
     padding: 0px;
     height: 100%;
+    background-color: rgb(223,226,241);
 }
-#app,
+
+#app {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  -webkit-transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%);
+  width: 80%;
+  height: 80%;
+  background-color: rgb(231,238,247);
+  border-radius: 20px;
+  box-shadow: 0px 10px 108px -25px rgba(102,102,102,1);
+}
+
+.sidebar,
 .flex-container {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
   height: 100%;
-  padding: 20px;
+  display: inline-block;
+}
+
+.sidebar {
+  display: inline-flex;
+  width: 20%;
+  flex-direction: column;
+  background-color: #6252FF;
+  border-top-left-radius: 20px;
+  border-bottom-left-radius: 20px;
+}
+
+.sidebar > * {
+  margin: auto;
+}
+
+.sidebar button {
+  height: 40px;
+  border-radius: 30px;
   width: 50%;
-  align-items: flex-end;
+  border-style: none;
+  background-color: white;
+  font-weight: 800;
+  /* text-transform: uppercase; */
+  font-size: larger;
+  font-family: 'Roboto', sans-serif;
+  color: #6252FF;
+}
+
+#sort-button {
+  margin-bottom: 30px;
+  outline: 0;
+}
+
+#sort-button:hover {
+  cursor: pointer;
+}
+
+.flex-container {
+  display: inline-flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  margin: auto;
+  position: inherit;
+  width: 80%;
 }
 
 .item {
   display: inline-block;
-  width: 5px;
-  margin-left: 4px;
-  background-color: cyan;
-  flex: none;
+  width: 6px;
+  margin-left: 8px;
+  background-color: #4596FF;
   color: transparent;
+  border-radius: 20px;
 }
 
 .unselected {
-  background-color: cyan;
+  background-color: #4596FF;
 }
 
 .selected-first {
@@ -174,10 +225,6 @@ body, html {
 
 .finished {
   background-color: lime;
-}
-
-.sidebar {
-  height: 100%;
 }
 
 </style>
