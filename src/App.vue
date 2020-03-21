@@ -5,7 +5,7 @@
         Reset!
       </button>
       <button  @click="selectionSort">
-        Corrigir
+        Selection
       </button>
       <button id="sort-button" @click="mergeSort">
         Mergesort!
@@ -268,14 +268,14 @@ body, html {
   font-size: larger;
   font-family: 'Roboto', sans-serif;
   color: #6252FF;
+  outline: 0;
 }
 
 #sort-button {
   margin-bottom: 30px;
-  outline: 0;
 }
 
-#sort-button:hover {
+button:hover {
   cursor: pointer;
 }
 
