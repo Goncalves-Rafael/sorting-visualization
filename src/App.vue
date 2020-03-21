@@ -1,15 +1,21 @@
 <template>
   <div id="app">
     <div class="sidebar">
-      <button id="sort-button" @click="selectionSort">
-        Sort!
+      <button  @click="reset">
+        Reset!
+      </button>
+      <button  @click="selectionSort">
+        Corrigir
+      </button>
+      <button id="sort-button" @click="mergeSort">
+        Mergesort!
       </button>
     </div>
     <div class="flex-container">
       <div
         v-for="(item,index) in itens"
         :key="index"
-        :class="{'item': true, 'selected-first': index === selectedFirst, 'selected-second': index === selectedSecond, 'finished': finished}"
+        :class="{'item': true, 'comparing-first': index === comparingFirst, 'comparing-second': index === comparingSecond, 'selected': index === selected, 'finished': finished}"
         :style="`height: ${(item/max)*100}%;`">
           {{item}}
       </div>
@@ -19,12 +25,14 @@
 
 <script>
 import selectionSort from './utils/selectionSort'
+import mergeSort from './utils/mergeSort'
 
 export default {
   name: 'App',
   data: function () {
     return {
       itens: [],
+      itensCopy: [],
       max: 200,
       min: 20,
       current: 0,
@@ -32,12 +40,15 @@ export default {
       clearIntervalId: null,
       dispatchedChanges: [],
       dispatchedComparisons: {},
-      selectedFirst: null,
-      selectedSecond: null,
+      dispachedSets: {},
+      comparingFirst: null,
+      comparingSecond: null,
+      selected: null,
       finished: false
     }
   },
   mounted () {
+    this.clearHistory()
     this.generateRandomArray(50)
     clearInterval(this.intervalId)
     clearInterval(this.clearIntervalId)
@@ -54,12 +65,22 @@ export default {
       this.dispatchedChanges.push([first, second])
     },
     dispatchComparisons (first, second, step) {
-      if (!this.dispatchedComparisons[step]) this.dispatchedComparisons[step] = { comparisons: [] }
-      this.dispatchedComparisons[step].comparisons.push([first, second])
+      if (!this.dispatchedComparisons[step]) this.dispatchedComparisons[step] = { indexes: [] }
+      this.dispatchedComparisons[step].indexes.push([first, second])
+    },
+    dispatchSets (array, index, value, step) {
+      if (!this.dispatchedSets.sets[step]) {
+        this.dispatchedSets.steps.push(step)
+        this.dispatchedSets.sets[step] = []
+      }
+      this.dispatchedSets.sets[step].push([index, value])
     },
     selectionSort () {
+      this.clearHistory()
+      this.itensCopy = this.itens.slice()
+      this.clearHistory()
       if (!this.intervalId) {
-        this.intervalId = setInterval(this.commitDispatches, 20)
+        this.intervalId = setInterval(this.commitDispatchesFactory(this.commitDispatchedChange), 20)
       }
       selectionSort.sort(
         this.itens,
@@ -67,10 +88,32 @@ export default {
         this.comparisonFactory(this.dispatchComparisons)
       )
     },
+    reset () {
+      this.itens = this.itensCopy
+    },
+    mergeSort () {
+      this.clearHistory()
+      this.itensCopy = this.itens.slice()
+      if (!this.intervalId) {
+        this.intervalId = setInterval(this.commitDispatchesFactory(this.commitDispatchedSet), 50)
+      }
+      mergeSort.sort(
+        this.itens,
+        this.setElementFactory(this.dispatchSets),
+        this.comparisonFactory((firstEl, secondEl, step) => {
+          const firstIndex = this.itens.findIndex(el => el === firstEl)
+          const secondIndex = this.itens.findIndex(el => el === secondEl)
+          this.dispatchComparisons(firstIndex, secondIndex, step)
+        })
+      )
+    },
     switchElementsDefault (array, first, second) {
       const temp = array[first]
       array[first] = array[second]
       array[second] = temp
+    },
+    setElementsDefault (array, index, value) {
+      array[index] = value
     },
     switchElementsFactory (registerSwitchCb, switchFunction = this.switchElementsDefault) {
       return function (array, first, second) {
@@ -80,34 +123,64 @@ export default {
       }
     },
     comparisonFactory (registerComparisonCb, compareFunction = (a, b) => b - a) {
-      return function (array, first, second, step) {
+      return function (first, second, step, array) {
         console.log('comparison')
-        if (registerComparisonCb) registerComparisonCb(first, second, step)
-        return compareFunction(array[first], array[second])
+        if (registerComparisonCb) registerComparisonCb(first, second, step, array)
+        return array ? compareFunction(array[first], array[second]) : compareFunction(first, second)
       }
     },
-    commitDispatches () {
-      try {
-        const change = this.dispatchedChanges[0]
-        if (this.dispatchedComparisons[change[0]].comparisons.length <= 0) {
-          this.selected = parseInt(change[0])
-          this.switchElementsDefault(this.itens, change[0], change[1])
-          this.dispatchedChanges.splice(0, 1)
-          console.log('commitDispatchesChanges')
-        } else {
-          debugger
-          const comparison = this.dispatchedComparisons[change[0]].comparisons[0]
-          this.selectedFirst = comparison[0]
-          this.selectedSecond = comparison[1]
-          this.dispatchedComparisons[change[0]].comparisons.splice(0, 1)
-          console.log('commitDispatchesComparison')
-        }
-        this.$forceUpdate()
-      } catch (e) {
-        if (!this.clearIntervalId) {
-          setTimeout(this.killInterval, 200)
-        }
+    setElementFactory (registerSetCb) {
+      return function (array, index, value, step) {
+        if (registerSetCb) registerSetCb(array, index, value, step)
+        array[index] = value
       }
+    },
+    commitDispatchesFactory (commitDispatchFunction) {
+      return function () {
+        try {
+          commitDispatchFunction()
+          this.$forceUpdate()
+        } catch (e) {
+          if (!this.clearIntervalId) {
+            this.clearIntervalId = setTimeout(this.killInterval, 200)
+          }
+        }
+      }.bind(this)
+    },
+    commitDispatchedChange () {
+      const change = this.dispatchedChanges[0]
+      if (this.dispatchedComparisons[change[0]].indexes.length <= 0) {
+        this.comparingFirst = parseInt(change[0])
+        this.switchElementsDefault(this.itens, change[0], change[1])
+        this.dispatchedChanges.splice(0, 1)
+        console.log('commitDispatchedChange')
+      } else {
+        this.commitDispatchedComparison(change[0], true)
+      }
+    },
+    commitDispatchedSet () {
+      const step = this.dispatchedSets.steps[0]
+      if (this.dispatchedComparisons[step].indexes.length <= 0) {
+        if (this.dispatchedSets.sets[step].length <= 0) {
+          this.dispatchedSets.steps.splice(0, 1)
+        } else {
+          const set = this.dispatchedSets.sets[step][0]
+          this.comparingFirst = parseInt(set[0])
+          this.setElementsDefault(this.itens, set[0], set[1])
+          this.dispatchedSets.sets[step].splice(0, 1)
+          console.log('commitDispatchedSet')
+        }
+      } else {
+        this.commitDispatchedComparison(step)
+      }
+    },
+    commitDispatchedComparison (step, selected) {
+      const indexes = this.dispatchedComparisons[step].indexes[0]
+      this.selected = selected ? step : null
+      this.comparingFirst = indexes[0]
+      this.comparingSecond = indexes[1]
+      this.dispatchedComparisons[step].indexes.splice(0, 1)
+      console.log('commitDispatcheDComparison')
     },
     killInterval () {
       if (this.dispatchedChanges.length === 0 && this.intervalId) {
@@ -118,14 +191,24 @@ export default {
         this.intervalId = setInterval(function () {
           this.finished = !this.finished
         }.bind(this), 100)
-        this.selectedFirst = null
-        this.selectedSecond = null
+        this.comparingFirst = null
+        this.comparingSecond = null
+        this.selected = null
         setTimeout(this.finish, 1500)
       }
     },
     finish () {
       clearInterval(this.intervalId)
+      this.intervalId = null
       this.finished = false
+    },
+    clearHistory () {
+      this.dispatchedSets = {
+        steps: [],
+        sets: []
+      }
+      this.dispatchedChanges = []
+      this.dispatchedComparisons = {}
     }
   }
 }
@@ -219,11 +302,15 @@ body, html {
   background-color: #4596FF;
 }
 
-.selected-first {
+.selected {
+  background-color: #9185FF;
+}
+
+.comparing-first {
   background-color: red;
 }
 
-.selected-second {
+.comparing-second {
   background-color: yellow;
 }
 
