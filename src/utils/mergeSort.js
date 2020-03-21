@@ -27,10 +27,9 @@ export default {
     i = 0
     j = 0
     k = left
-    if (R.length === 0) debugger
 
     while (i < half1 && j < half2) {
-      if (compare(L[i], R[j], step) > 0) {
+      if (compare(L[i], R[j], step) < 0) {
         set(array, k, L[i], step)
         k++
         i++

@@ -7,6 +7,9 @@
       <button  @click="selectionSort">
         Selection
       </button>
+      <button  @click="bubbleSort">
+        Bubble
+      </button>
       <button id="sort-button" @click="mergeSort">
         Mergesort!
       </button>
@@ -26,6 +29,7 @@
 <script>
 import selectionSort from './utils/selectionSort'
 import mergeSort from './utils/mergeSort'
+import bubbleSort from './utils/bubbleSort'
 
 export default {
   name: 'App',
@@ -38,7 +42,7 @@ export default {
       current: 0,
       intervalId: null,
       clearIntervalId: null,
-      dispatchedChanges: [],
+      dispatchedChanges: {},
       dispatchedComparisons: {},
       dispachedSets: {},
       comparingFirst: null,
@@ -61,8 +65,12 @@ export default {
       this.max = Math.max(...this.itens) + 10
       this.interval = setInterval(this.sort, 1000)
     },
-    dispatchChanges (first, second) {
-      this.dispatchedChanges.push([first, second])
+    dispatchChanges (first, second, step = first) {
+      if (!this.dispatchedChanges.changes[step]) {
+        this.dispatchedChanges.steps.push(step)
+        this.dispatchedChanges.changes[step] = []
+      }
+      this.dispatchedChanges.changes[step].push([first, second])
     },
     dispatchComparisons (first, second, step) {
       if (!this.dispatchedComparisons[step]) this.dispatchedComparisons[step] = { indexes: [] }
@@ -83,6 +91,19 @@ export default {
         this.intervalId = setInterval(this.commitDispatchesFactory(this.commitDispatchedChange), 20)
       }
       selectionSort.sort(
+        this.itens,
+        this.switchElementsFactory(this.dispatchChanges),
+        this.comparisonFactory(this.dispatchComparisons)
+      )
+    },
+    bubbleSort () {
+      this.clearHistory()
+      this.itensCopy = this.itens.slice()
+      this.clearHistory()
+      if (!this.intervalId) {
+        this.intervalId = setInterval(this.commitDispatchesFactory(this.commitDispatchedChange), 20)
+      }
+      bubbleSort.sort(
         this.itens,
         this.switchElementsFactory(this.dispatchChanges),
         this.comparisonFactory(this.dispatchComparisons)
@@ -116,13 +137,13 @@ export default {
       array[index] = value
     },
     switchElementsFactory (registerSwitchCb, switchFunction = this.switchElementsDefault) {
-      return function (array, first, second) {
+      return function (array, first, second, step) {
         console.log('switch')
         switchFunction(array, first, second)
-        if (registerSwitchCb) registerSwitchCb(first, second)
+        if (registerSwitchCb) registerSwitchCb(first, second, step)
       }
     },
-    comparisonFactory (registerComparisonCb, compareFunction = (a, b) => b - a) {
+    comparisonFactory (registerComparisonCb, compareFunction = (a, b) => a - b) {
       return function (first, second, step, array) {
         console.log('comparison')
         if (registerComparisonCb) registerComparisonCb(first, second, step, array)
@@ -148,14 +169,19 @@ export default {
       }.bind(this)
     },
     commitDispatchedChange () {
-      const change = this.dispatchedChanges[0]
-      if (this.dispatchedComparisons[change[0]].indexes.length <= 0) {
-        this.comparingFirst = parseInt(change[0])
-        this.switchElementsDefault(this.itens, change[0], change[1])
-        this.dispatchedChanges.splice(0, 1)
-        console.log('commitDispatchedChange')
+      const step = this.dispatchedChanges.steps[0]
+      if (this.dispatchedComparisons[step].indexes.length <= 0) {
+        if (this.dispatchedChanges.changes[step].length <= 0) {
+          this.dispatchedChanges.steps.splice(0, 1)
+        } else {
+          const change = this.dispatchedChanges.changes[step][0]
+          this.comparingFirst = parseInt(change[0])
+          this.switchElementsDefault(this.itens, change[0], change[1])
+          this.dispatchedChanges.changes[step].splice(0, 1)
+          console.log('commitDispatchedChange')
+        }
       } else {
-        this.commitDispatchedComparison(change[0], true)
+        this.commitDispatchedComparison(step, true)
       }
     },
     commitDispatchedSet () {
@@ -183,7 +209,7 @@ export default {
       console.log('commitDispatcheDComparison')
     },
     killInterval () {
-      if (this.dispatchedChanges.length === 0 && this.intervalId) {
+      if (this.dispatchedChanges.steps.length === 0 && this.intervalId) {
         clearInterval(this.intervalId)
         clearInterval(this.clearIntervalId)
         this.intervalId = null
@@ -207,7 +233,10 @@ export default {
         steps: [],
         sets: []
       }
-      this.dispatchedChanges = []
+      this.dispatchedChanges = {
+        steps: [],
+        changes: []
+      }
       this.dispatchedComparisons = {}
     }
   }
