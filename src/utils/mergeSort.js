@@ -29,6 +29,7 @@ export default {
     k = left
 
     while (i < half1 && j < half2) {
+      step++
       if (compare(L[i], R[j], step) < 0) {
         set(array, k, L[i], step)
         k++

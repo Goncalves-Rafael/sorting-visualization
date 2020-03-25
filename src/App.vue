@@ -1,6 +1,9 @@
 <template>
   <div id="app">
     <div class="sidebar">
+      <button  @click="randomize">
+        Randomize!
+      </button>
       <button  @click="reset">
         Reset!
       </button>
@@ -60,7 +63,12 @@ export default {
   methods: {
     generateRandomArray (size = 20) {
       for (let i = 0; i < size; i++) {
-        this.itens.push(Math.ceil(Math.random() * (100) + 10)) // TODO:
+        const newRand = Math.ceil(Math.random() * (100) + 10)
+        if (this.itens.find(el => el === newRand)) {
+          i--
+          continue
+        }
+        this.itens.push(newRand) // TODO:
       }
       this.max = Math.max(...this.itens) + 10
       this.interval = setInterval(this.sort, 1000)
@@ -112,6 +120,13 @@ export default {
     reset () {
       this.itens = this.itensCopy
     },
+    randomize () {
+      this.clearHistory()
+      this.itens = []
+      this.generateRandomArray(50)
+      clearInterval(this.intervalId)
+      clearInterval(this.clearIntervalId)
+    },
     mergeSort () {
       this.clearHistory()
       this.itensCopy = this.itens.slice()
@@ -138,14 +153,14 @@ export default {
     },
     switchElementsFactory (registerSwitchCb, switchFunction = this.switchElementsDefault) {
       return function (array, first, second, step) {
-        console.log('switch')
+        // console.log('switch')
         switchFunction(array, first, second)
         if (registerSwitchCb) registerSwitchCb(first, second, step)
       }
     },
     comparisonFactory (registerComparisonCb, compareFunction = (a, b) => a - b) {
       return function (first, second, step, array) {
-        console.log('comparison')
+        // console.log('comparison')
         if (registerComparisonCb) registerComparisonCb(first, second, step, array)
         return array ? compareFunction(array[first], array[second]) : compareFunction(first, second)
       }
@@ -178,7 +193,7 @@ export default {
           this.comparingFirst = parseInt(change[0])
           this.switchElementsDefault(this.itens, change[0], change[1])
           this.dispatchedChanges.changes[step].splice(0, 1)
-          console.log('commitDispatchedChange')
+          // console.log('commitDispatchedChange')
         }
       } else {
         this.commitDispatchedComparison(step, true)
@@ -191,10 +206,10 @@ export default {
           this.dispatchedSets.steps.splice(0, 1)
         } else {
           const set = this.dispatchedSets.sets[step][0]
-          this.comparingFirst = parseInt(set[0])
+          this.selected = parseInt(set[0])
           this.setElementsDefault(this.itens, set[0], set[1])
           this.dispatchedSets.sets[step].splice(0, 1)
-          console.log('commitDispatchedSet')
+          // console.log('commitDispatchedSet')
         }
       } else {
         this.commitDispatchedComparison(step)
@@ -206,7 +221,7 @@ export default {
       this.comparingFirst = indexes[0]
       this.comparingSecond = indexes[1]
       this.dispatchedComparisons[step].indexes.splice(0, 1)
-      console.log('commitDispatcheDComparison')
+      // console.log('commitDispatcheDComparison')
     },
     killInterval () {
       if (this.dispatchedChanges.steps.length === 0 && this.intervalId) {
@@ -289,7 +304,7 @@ body, html {
 .sidebar button {
   height: 40px;
   border-radius: 30px;
-  width: 50%;
+  width: 80%;
   border-style: none;
   background-color: white;
   font-weight: 800;
