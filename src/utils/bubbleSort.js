@@ -1,13 +1,15 @@
 export default {
-  sort (array, switchElementsFunction, comparisonFunction) {
+  sort (array, registerComparisonCb, registerSwitchCb, registerSetCb) {
     const arrayCopy = array.slice()
-    let step = 0
     for (let i = 0; i < arrayCopy.length; i++) {
       let k = 0
       for (let j = 1; j < arrayCopy.length - i; j++, k++) {
-        if (comparisonFunction(k, j, step, arrayCopy) > 0) {
-          switchElementsFunction(arrayCopy, k, j, step)
-          step++
+        registerComparisonCb(k, j)
+        if (arrayCopy[k] > arrayCopy[j]) {
+          const temp = arrayCopy[j]
+          arrayCopy[j] = arrayCopy[k]
+          arrayCopy[k] = temp
+          registerSwitchCb(k, j)
         }
       }
     }

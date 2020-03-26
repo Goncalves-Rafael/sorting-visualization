@@ -1,13 +1,11 @@
-let compare = null
-let set = null
-let step = 0
+let registerComparison = null
+let registerSet = null
 
 export default {
-  sort (array, setElementFunction, comparisonFunction) {
+  sort (array, registerComparisonCb, registerSwitchCb, registerSetCb) {
     const arrayCopy = array.slice()
-    set = setElementFunction
-    compare = comparisonFunction
-    step = 0
+    registerComparison = registerComparisonCb
+    registerSet = registerSetCb
     this.mergeSort(arrayCopy, 0, array.length - 1)
   },
   mergeSort (array, left, right) {
@@ -29,31 +27,33 @@ export default {
     k = left
 
     while (i < half1 && j < half2) {
-      step++
-      if (compare(L[i], R[j], step) < 0) {
-        set(array, k, L[i], step)
+      registerComparison(left + i, middle + j)
+      if (L[i] < R[j]) {
+        array[k] = L[i]
+        registerSet(k, L[i])
         k++
         i++
       } else {
-        set(array, k, R[j], step)
+        array[k] = R[j]
+        registerSet(k, R[j])
         k++
         j++
       }
     }
 
     while (i < half1) {
-      set(array, k, L[i], step)
+      registerSet(k, L[i])
+      array[k] = L[i]
       k++
       i++
     }
 
     while (j < half2) {
-      set(array, k, R[j], step)
+      registerSet(k, R[j])
+      array[k] = R[j]
       k++
       j++
     }
-
-    step++
   }
 
 }

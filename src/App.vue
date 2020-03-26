@@ -1,20 +1,25 @@
 <template>
   <div id="app">
     <div class="sidebar">
-      <button  @click="randomize">
-        Randomize!
-      </button>
-      <button  @click="reset">
-        Reset!
-      </button>
-      <button  @click="selectionSort">
-        Selection
-      </button>
-      <button  @click="bubbleSort">
-        Bubble
-      </button>
-      <button id="sort-button" @click="mergeSort">
-        Mergesort!
+      <div id="controls-buttons">
+        <button  @click="randomize">
+          Randomize!
+        </button>
+        <button  @click="reset">
+          Reset!
+        </button>
+      </div>
+      <div id="sorting-algorithms" >
+        <div v-for="algorithm in sortingAlgorithms"
+          :key="algorithm.name"
+          :value="algorithm.implementation"
+          :class="{'sorting-select': sortingFunction == algorithm.implementation}"
+          @click="selectAlgorithm(algorithm.implementation)">
+          {{algorithm.name}}
+        </div>
+      </div>
+      <button id="sort-button" @click="sort">
+        Sort!
       </button>
     </div>
     <div class="flex-container">
@@ -34,6 +39,8 @@ import selectionSort from './utils/selectionSort'
 import mergeSort from './utils/mergeSort'
 import bubbleSort from './utils/bubbleSort'
 
+const DEFAULT_LENGTH = 50
+
 export default {
   name: 'App',
   data: function () {
@@ -42,26 +49,41 @@ export default {
       itensCopy: [],
       max: 200,
       min: 20,
-      current: 0,
       intervalId: null,
       clearIntervalId: null,
-      dispatchedChanges: {},
-      dispatchedComparisons: {},
-      dispachedSets: {},
+      dispatchedActions: [],
+      currentIndex: 0,
       comparingFirst: null,
       comparingSecond: null,
       selected: null,
-      finished: false
+      finished: false,
+      sortingAlgorithms: [],
+      sortingFunction: null
     }
   },
+  created () {
+    this.sortingFunction = bubbleSort
+    this.sortingAlgorithms.push({
+      name: 'MergeSort',
+      implementation: mergeSort
+    })
+    this.sortingAlgorithms.push({
+      name: 'BubbleSort',
+      implementation: bubbleSort
+    })
+    this.sortingAlgorithms.push({
+      name: 'SelectionSort',
+      implementation: selectionSort
+    })
+  },
   mounted () {
-    this.clearHistory()
-    this.generateRandomArray(50)
-    clearInterval(this.intervalId)
-    clearInterval(this.clearIntervalId)
+    this.clearState()
+    this.generateRandomArray(DEFAULT_LENGTH)
   },
   methods: {
-    generateRandomArray (size = 20) {
+    generateRandomArray (size = DEFAULT_LENGTH) {
+      this.itens = []
+      this.itensCopy = []
       for (let i = 0; i < size; i++) {
         const newRand = Math.ceil(Math.random() * (100) + 10)
         if (this.itens.find(el => el === newRand)) {
@@ -70,189 +92,113 @@ export default {
         }
         this.itens.push(newRand) // TODO:
       }
-      this.max = Math.max(...this.itens) + 10
-      this.interval = setInterval(this.sort, 1000)
+      // this.max = Math.max(...this.itens) + 10
+      // this.interval = setInterval(this.sort, 1000)
     },
-    dispatchChanges (first, second, step = first) {
-      if (!this.dispatchedChanges.changes[step]) {
-        this.dispatchedChanges.steps.push(step)
-        this.dispatchedChanges.changes[step] = []
+    selectAlgorithm (algorithm) {
+      this.sortingFunction = algorithm
+    },
+    sort () {
+      if (this.itensCopy.length === 0) {
+        this.itensCopy = this.itens.slice()
+      } else {
+        this.reset()
       }
-      this.dispatchedChanges.changes[step].push([first, second])
-    },
-    dispatchComparisons (first, second, step) {
-      if (!this.dispatchedComparisons[step]) this.dispatchedComparisons[step] = { indexes: [] }
-      this.dispatchedComparisons[step].indexes.push([first, second])
-    },
-    dispatchSets (array, index, value, step) {
-      if (!this.dispatchedSets.sets[step]) {
-        this.dispatchedSets.steps.push(step)
-        this.dispatchedSets.sets[step] = []
-      }
-      this.dispatchedSets.sets[step].push([index, value])
-    },
-    selectionSort () {
-      this.clearHistory()
-      this.itensCopy = this.itens.slice()
-      this.clearHistory()
+      this.clearState()
       if (!this.intervalId) {
-        this.intervalId = setInterval(this.commitDispatchesFactory(this.commitDispatchedChange), 20)
+        this.intervalId = setInterval(this.commitActions, 20)
       }
-      selectionSort.sort(
+      this.sortingFunction.sort(
         this.itens,
-        this.switchElementsFactory(this.dispatchChanges),
-        this.comparisonFactory(this.dispatchComparisons)
+        this.registerComparison,
+        this.registerSwitch,
+        this.registerSet
       )
     },
-    bubbleSort () {
-      this.clearHistory()
-      this.itensCopy = this.itens.slice()
-      this.clearHistory()
-      if (!this.intervalId) {
-        this.intervalId = setInterval(this.commitDispatchesFactory(this.commitDispatchedChange), 20)
+    registerComparison (a, b) {
+      this.dispatchedActions.push({
+        type: 'comparison',
+        targets: [a, b]
+      })
+    },
+    commitComparison (comparisonAction) {
+      this.comparingFirst = comparisonAction.targets[0]
+      this.comparingSecond = comparisonAction.targets[1]
+    },
+    registerSet (a, value) {
+      this.dispatchedActions.push({
+        type: 'set',
+        targets: [a, value]
+      })
+    },
+    commitSet (setAction) {
+      this.selected = setAction.targets[0]
+      this.itens[this.selected] = setAction.targets[1]
+    },
+    registerSwitch (a, b) {
+      this.dispatchedActions.push({
+        type: 'switch',
+        targets: [a, b]
+      })
+    },
+    commitSwitch (switchAction) {
+      this.comparingFirst = switchAction.targets[0]
+      this.comparingSecond = switchAction.targets[1]
+      const temp = this.itens[this.comparingFirst]
+      this.$set(this.itens, this.comparingFirst, this.itens[this.comparingSecond])
+      this.$set(this.itens, this.comparingSecond, temp)
+    },
+    commitActions () {
+      try {
+        if (this.dispatchedActions.length <= this.currentIndex) {
+          return this.killInterval()
+        }
+        const action = this.dispatchedActions[this.currentIndex]
+        if (action.type === 'switch') {
+          this.commitSwitch(action)
+        } else if (action.type === 'comparison') {
+          this.commitComparison(action)
+        } else {
+          this.commitSet(action)
+        }
+        this.currentIndex++
+      } catch (err) {
+        console.log(err)
+        this.killInterval()
       }
-      bubbleSort.sort(
-        this.itens,
-        this.switchElementsFactory(this.dispatchChanges),
-        this.comparisonFactory(this.dispatchComparisons)
-      )
     },
     reset () {
-      this.itens = this.itensCopy
+      if (this.itensCopy && this.itensCopy.length > 0) this.itens = this.itensCopy.slice()
+      this.clearState()
     },
     randomize () {
-      this.clearHistory()
-      this.itens = []
-      this.generateRandomArray(50)
-      clearInterval(this.intervalId)
-      clearInterval(this.clearIntervalId)
-    },
-    mergeSort () {
-      this.clearHistory()
-      this.itensCopy = this.itens.slice()
-      if (!this.intervalId) {
-        this.intervalId = setInterval(this.commitDispatchesFactory(this.commitDispatchedSet), 50)
-      }
-      mergeSort.sort(
-        this.itens,
-        this.setElementFactory(this.dispatchSets),
-        this.comparisonFactory((firstEl, secondEl, step) => {
-          const firstIndex = this.itens.findIndex(el => el === firstEl)
-          const secondIndex = this.itens.findIndex(el => el === secondEl)
-          this.dispatchComparisons(firstIndex, secondIndex, step)
-        })
-      )
-    },
-    switchElementsDefault (array, first, second) {
-      const temp = array[first]
-      array[first] = array[second]
-      array[second] = temp
-    },
-    setElementsDefault (array, index, value) {
-      array[index] = value
-    },
-    switchElementsFactory (registerSwitchCb, switchFunction = this.switchElementsDefault) {
-      return function (array, first, second, step) {
-        // console.log('switch')
-        switchFunction(array, first, second)
-        if (registerSwitchCb) registerSwitchCb(first, second, step)
-      }
-    },
-    comparisonFactory (registerComparisonCb, compareFunction = (a, b) => a - b) {
-      return function (first, second, step, array) {
-        // console.log('comparison')
-        if (registerComparisonCb) registerComparisonCb(first, second, step, array)
-        return array ? compareFunction(array[first], array[second]) : compareFunction(first, second)
-      }
-    },
-    setElementFactory (registerSetCb) {
-      return function (array, index, value, step) {
-        if (registerSetCb) registerSetCb(array, index, value, step)
-        array[index] = value
-      }
-    },
-    commitDispatchesFactory (commitDispatchFunction) {
-      return function () {
-        try {
-          commitDispatchFunction()
-          this.$forceUpdate()
-        } catch (e) {
-          if (!this.clearIntervalId) {
-            this.clearIntervalId = setTimeout(this.killInterval, 200)
-          }
-        }
-      }.bind(this)
-    },
-    commitDispatchedChange () {
-      const step = this.dispatchedChanges.steps[0]
-      if (this.dispatchedComparisons[step].indexes.length <= 0) {
-        if (this.dispatchedChanges.changes[step].length <= 0) {
-          this.dispatchedChanges.steps.splice(0, 1)
-        } else {
-          const change = this.dispatchedChanges.changes[step][0]
-          this.comparingFirst = parseInt(change[0])
-          this.switchElementsDefault(this.itens, change[0], change[1])
-          this.dispatchedChanges.changes[step].splice(0, 1)
-          // console.log('commitDispatchedChange')
-        }
-      } else {
-        this.commitDispatchedComparison(step, true)
-      }
-    },
-    commitDispatchedSet () {
-      const step = this.dispatchedSets.steps[0]
-      if (this.dispatchedComparisons[step].indexes.length <= 0) {
-        if (this.dispatchedSets.sets[step].length <= 0) {
-          this.dispatchedSets.steps.splice(0, 1)
-        } else {
-          const set = this.dispatchedSets.sets[step][0]
-          this.selected = parseInt(set[0])
-          this.setElementsDefault(this.itens, set[0], set[1])
-          this.dispatchedSets.sets[step].splice(0, 1)
-          // console.log('commitDispatchedSet')
-        }
-      } else {
-        this.commitDispatchedComparison(step)
-      }
-    },
-    commitDispatchedComparison (step, selected) {
-      const indexes = this.dispatchedComparisons[step].indexes[0]
-      this.selected = selected ? step : null
-      this.comparingFirst = indexes[0]
-      this.comparingSecond = indexes[1]
-      this.dispatchedComparisons[step].indexes.splice(0, 1)
-      // console.log('commitDispatcheDComparison')
+      this.clearState()
+      this.generateRandomArray()
     },
     killInterval () {
-      if (this.dispatchedChanges.steps.length === 0 && this.intervalId) {
+      if (this.dispatchedActions.length <= this.currentIndex && this.intervalId) {
         clearInterval(this.intervalId)
         clearInterval(this.clearIntervalId)
-        this.intervalId = null
-        this.clearIntervalId = null
         this.intervalId = setInterval(function () {
           this.finished = !this.finished
         }.bind(this), 100)
         this.comparingFirst = null
         this.comparingSecond = null
         this.selected = null
-        setTimeout(this.finish, 1500)
+        setTimeout(this.clearState, 1500)
       }
     },
-    finish () {
+    clearState () {
       clearInterval(this.intervalId)
+      clearInterval(this.clearIntervalId)
+      this.dispatchedActions = []
+      this.currentIndex = 0
+      this.comparingFirst = null
+      this.comparingSecond = null
+      this.selected = null
       this.intervalId = null
+      this.clearIntervalId = null
       this.finished = false
-    },
-    clearHistory () {
-      this.dispatchedSets = {
-        steps: [],
-        sets: []
-      }
-      this.dispatchedChanges = {
-        steps: [],
-        changes: []
-      }
-      this.dispatchedComparisons = {}
     }
   }
 }
@@ -301,7 +247,86 @@ body, html {
   margin: auto;
 }
 
-.sidebar button {
+#controls-buttons {
+  display: flex;
+  margin-top: 0px;
+  width: 100%;
+  height: 4rem;
+  box-shadow: 0px 3px 0px 0px rgba(0,0,0,0.15);
+}
+
+#controls-buttons button{
+  border-style: none;
+  font-weight: 800;
+  font-family: 'Roboto', sans-serif;
+  /* text-transform: uppercase; */
+  font-size: larger;
+  border-style: none;
+  outline: 0;
+  flex-grow: 1;
+}
+
+#controls-buttons button:first-child{
+  border-top-left-radius: 20px;
+  background-color: white;
+  color: #4036a3;
+}
+
+#controls-buttons button:nth-child(2){
+  background-color: #4036a3;
+  color: white;
+}
+
+#controls-buttons button:hover {
+  font-size: x-large;
+}
+
+#sorting-algorithms {
+  width: 100%;
+  text-align: center;
+  background-color: #4036a3;
+  display: flex;
+  flex-direction: column;
+}
+
+#sorting-algorithms div {
+  font-size: x-large;
+  background-color: #4036a3;
+  color: rgba(0,0,0, .3);
+  padding: 20px 0px;
+  border: none;
+  font-weight: 800;
+  font-family: 'Roboto', sans-serif;
+  /* text-transform: uppercase; */
+  font-size: larger;
+  cursor: pointer;
+  transition: all .5s ease-in-out;
+}
+
+#sorting-algorithms div:hover {
+  color: white;
+}
+
+#sorting-algorithms div.sorting-select {
+  background-color: white;
+  color: #4036a3;
+  position: relative;
+}
+
+#sorting-algorithms div.sorting-select::after {
+  content: ' ';
+  display: inline-block;
+  transform: rotate(45deg);
+  height: 17px;
+  width: 9px;
+  border-bottom: 4px solid #4036a3;
+  border-right: 4px solid #4036a3;
+  position: absolute;
+  right: 30px;
+}
+
+#sort-button {
+  margin-bottom: 30px;
   height: 40px;
   border-radius: 30px;
   width: 80%;
@@ -313,10 +338,6 @@ body, html {
   font-family: 'Roboto', sans-serif;
   color: #6252FF;
   outline: 0;
-}
-
-#sort-button {
-  margin-bottom: 30px;
 }
 
 button:hover {
@@ -331,6 +352,7 @@ button:hover {
   margin: auto;
   position: inherit;
   width: 80%;
+  box-shadow: inset 7px 0 9px -7px rgba(0,0,0,0.7);
 }
 
 .item {
